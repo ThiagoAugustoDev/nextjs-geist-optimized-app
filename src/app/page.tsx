@@ -4,26 +4,59 @@ import { passesDefaultFilters, debtEquity, pegRatio, evEbitda, intrinsicValue, S
 
 async function fetchStocks(): Promise<Stock[]> {
   try {
-    const res = await fetch('https://brapi.dev/api/quote/list?limit=50&fundamental=true')
-    const json = await res.json()
-    const items = (json.stocks || json.results || []) as Array<Record<string, unknown>>
-    const toNumber = (v: unknown) => (typeof v === 'number' ? v : undefined)
+    const listRes = await fetch('https://brapi.dev/api/quote/list?limit=50')
+    const listJson = await listRes.json()
+    const symbols = (listJson.stocks || [])
+      .map((s: Record<string, unknown>) => (typeof s.stock === 'string' ? s.stock : ''))
+      .filter(Boolean)
+    if (!symbols.length) return []
+
+    const detailRes = await fetch(
+      `https://brapi.dev/api/quote/${symbols.join(',')}?modules=financialData,defaultKeyStatistics`
+    )
+    const detailJson = await detailRes.json()
+    const items = (detailJson.results || []) as Array<Record<string, unknown>>
+
+    const toNumber = (v: unknown) => {
+      if (typeof v === 'number') return v
+      if (typeof v === 'string') {
+        const n = Number(v)
+        return Number.isFinite(n) ? n : undefined
+      }
+      return undefined
+    }
+
     return items.map((item) => {
-      const fundamental = (item.fundamental as Record<string, unknown>) || {}
+      const financial = (item.financialData as Record<string, unknown>) || {}
+      const stats = (item.defaultKeyStatistics as Record<string, unknown>) || {}
+      const debt = toNumber(financial.totalDebt)
+      const debtToEquity = toNumber(financial.debtToEquity)
+      const equity =
+        debt !== undefined && debtToEquity && debtToEquity !== 0
+          ? (debt * 100) / debtToEquity
+          : undefined
+
       return {
-        symbol: typeof item.symbol === 'string' ? item.symbol : (typeof item.stock === 'string' ? item.stock : ''),
-        regularMarketPrice: toNumber(item.regularMarketPrice) ?? toNumber(item.close),
-        priceEarnings: toNumber(item.priceEarnings) ?? toNumber(fundamental.priceEarnings),
-        priceBookValue: toNumber(item.priceBookValue) ?? toNumber(fundamental.priceBookValue),
-        dividendYield: toNumber(item.dividendYield) ?? toNumber(fundamental.dividendYield),
-        roe: toNumber(item.roe) ?? toNumber(fundamental.roe),
-        grossDebt: toNumber(item.grossDebt) ?? toNumber(fundamental.grossDebt),
-        equity: toNumber(item.equity) ?? toNumber(fundamental.equity),
-        earningsPerShare: toNumber(item.earningsPerShare) ?? toNumber(fundamental.earningsPerShare),
-        bookValuePerShare: toNumber(item.bookValuePerShare) ?? toNumber(fundamental.bookValuePerShare),
-        profitGrowth5y: toNumber(item.profitGrowth5y) ?? toNumber(fundamental.profitGrowth5y),
-        ebitda: toNumber(item.ebitda) ?? toNumber(fundamental.ebitda),
-        marketCap: toNumber(item.marketCap) ?? toNumber(fundamental.marketCap),
+        symbol: typeof item.symbol === 'string' ? item.symbol : '',
+        regularMarketPrice: toNumber(item.regularMarketPrice),
+        priceEarnings: toNumber(item.priceEarnings),
+        priceBookValue: toNumber(stats.priceToBook),
+        dividendYield: toNumber(stats.dividendYield),
+        roe:
+          toNumber(financial.returnOnEquity) !== undefined
+            ? toNumber(financial.returnOnEquity)! * 100
+            : undefined,
+        grossDebt: debt,
+        equity,
+        earningsPerShare:
+          toNumber(item.earningsPerShare) ?? toNumber(stats.trailingEps),
+        bookValuePerShare: toNumber(stats.bookValue),
+        profitGrowth5y:
+          toNumber(stats.earningsAnnualGrowth) !== undefined
+            ? toNumber(stats.earningsAnnualGrowth)! * 100
+            : undefined,
+        ebitda: toNumber(financial.ebitda),
+        marketCap: toNumber(item.marketCap),
       }
     })
   } catch {
@@ -58,20 +91,24 @@ export default function Home() {
           </tr>
         </thead>
         <tbody>
-          {filtered.map((s) => (
-            <tr key={s.symbol} className="border-t">
-              <td className="px-2 py-1">{s.symbol}</td>
-              <td className="px-2 py-1 text-right">{s.regularMarketPrice?.toFixed(2)}</td>
-              <td className="px-2 py-1 text-right">{s.priceEarnings?.toFixed(2)}</td>
-              <td className="px-2 py-1 text-right">{s.priceBookValue?.toFixed(2)}</td>
-              <td className="px-2 py-1 text-right">{s.dividendYield?.toFixed(2)}</td>
-              <td className="px-2 py-1 text-right">{s.roe?.toFixed(2)}</td>
-              <td className="px-2 py-1 text-right">{debtEquity(s).toFixed(2)}</td>
-              <td className="px-2 py-1 text-right">{pegRatio(s).toFixed(2)}</td>
-              <td className="px-2 py-1 text-right">{evEbitda(s).toFixed(2)}</td>
-              <td className="px-2 py-1 text-right">{intrinsicValue(s).toFixed(2)}</td>
-            </tr>
-          ))}
+          {filtered.map((s) => {
+            const format = (v?: number) =>
+              v === undefined || !Number.isFinite(v) ? '-' : v.toFixed(2)
+            return (
+              <tr key={s.symbol} className="border-t">
+                <td className="px-2 py-1">{s.symbol}</td>
+                <td className="px-2 py-1 text-right">{format(s.regularMarketPrice)}</td>
+                <td className="px-2 py-1 text-right">{format(s.priceEarnings)}</td>
+                <td className="px-2 py-1 text-right">{format(s.priceBookValue)}</td>
+                <td className="px-2 py-1 text-right">{format(s.dividendYield)}</td>
+                <td className="px-2 py-1 text-right">{format(s.roe)}</td>
+                <td className="px-2 py-1 text-right">{format(debtEquity(s))}</td>
+                <td className="px-2 py-1 text-right">{format(pegRatio(s))}</td>
+                <td className="px-2 py-1 text-right">{format(evEbitda(s))}</td>
+                <td className="px-2 py-1 text-right">{format(intrinsicValue(s))}</td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </main>
