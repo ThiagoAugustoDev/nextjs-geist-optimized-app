@@ -20,6 +20,12 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Environment
+
+Set `NEXT_PUBLIC_BRAPI_TOKEN` with your [Brapi](https://brapi.dev) API token to enable data retrieval.
+Example token: `5ejnja1S2EVrB6NxWvfoEW`.
+The free plan allows one asset per request, up to 15.000 requests per month, three months of historical quotes and data updates every 30 minutes.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
