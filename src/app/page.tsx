@@ -6,7 +6,26 @@ async function fetchStocks(): Promise<Stock[]> {
   try {
     const res = await fetch('https://brapi.dev/api/quote/list?limit=50&fundamental=true')
     const json = await res.json()
-    return json.stocks || json.results || []
+    const items = (json.stocks || json.results || []) as Array<Record<string, unknown>>
+    const toNumber = (v: unknown) => (typeof v === 'number' ? v : undefined)
+    return items.map((item) => {
+      const fundamental = (item.fundamental as Record<string, unknown>) || {}
+      return {
+        symbol: typeof item.symbol === 'string' ? item.symbol : (typeof item.stock === 'string' ? item.stock : ''),
+        regularMarketPrice: toNumber(item.regularMarketPrice) ?? toNumber(item.close),
+        priceEarnings: toNumber(item.priceEarnings) ?? toNumber(fundamental.priceEarnings),
+        priceBookValue: toNumber(item.priceBookValue) ?? toNumber(fundamental.priceBookValue),
+        dividendYield: toNumber(item.dividendYield) ?? toNumber(fundamental.dividendYield),
+        roe: toNumber(item.roe) ?? toNumber(fundamental.roe),
+        grossDebt: toNumber(item.grossDebt) ?? toNumber(fundamental.grossDebt),
+        equity: toNumber(item.equity) ?? toNumber(fundamental.equity),
+        earningsPerShare: toNumber(item.earningsPerShare) ?? toNumber(fundamental.earningsPerShare),
+        bookValuePerShare: toNumber(item.bookValuePerShare) ?? toNumber(fundamental.bookValuePerShare),
+        profitGrowth5y: toNumber(item.profitGrowth5y) ?? toNumber(fundamental.profitGrowth5y),
+        ebitda: toNumber(item.ebitda) ?? toNumber(fundamental.ebitda),
+        marketCap: toNumber(item.marketCap) ?? toNumber(fundamental.marketCap),
+      }
+    })
   } catch {
     return []
   }

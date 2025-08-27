@@ -40,11 +40,11 @@ export function evEbitda(s: Stock) {
 }
 
 export function passesDefaultFilters(s: Stock) {
-  if ((s.priceEarnings ?? 0) <= 0) return false;
-  if ((s.priceBookValue ?? 0) > 1) return false;
-  if ((s.roe ?? 0) < 15) return false;
-  if (debtEquity(s) >= 1) return false;
-  if (pegRatio(s) > 1) return false;
-  if (evEbitda(s) > 10) return false;
+  if (s.priceEarnings !== undefined && s.priceEarnings <= 0) return false;
+  if (s.priceBookValue !== undefined && s.priceBookValue > 1) return false;
+  if (s.roe !== undefined && s.roe < 15) return false;
+  if (s.grossDebt !== undefined && s.equity !== undefined && debtEquity(s) >= 1) return false;
+  if (s.profitGrowth5y !== undefined && pegRatio(s) > 1) return false;
+  if (s.marketCap !== undefined && s.ebitda !== undefined && evEbitda(s) > 10) return false;
   return true;
 }
