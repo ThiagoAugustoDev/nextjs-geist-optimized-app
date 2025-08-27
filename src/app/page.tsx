@@ -26,39 +26,16 @@ async function fetchStocks(): Promise<Stock[]> {
 
     const detailPromises = symbols.map(async (symbol) => {
       const res = await fetch(
-        `https://brapi.dev/api/quote/${symbol}?modules=financialData,defaultKeyStatistics${token ? `&token=${token}` : ''}`
+        `https://brapi.dev/api/quote/${symbol}${token ? `?token=${token}` : ''}`
       )
       if (!res.ok) return undefined
       const json = await res.json()
       const item = (json.results?.[0] || {}) as Record<string, unknown>
-      const financial = (item.financialData as Record<string, unknown>) || {}
-      const stats = (item.defaultKeyStatistics as Record<string, unknown>) || {}
-      const debt = toNumber(financial.totalDebt)
-      const debtToEquity = toNumber(financial.debtToEquity)
-      const equity =
-        debt !== undefined && debtToEquity && debtToEquity !== 0
-          ? (debt * 100) / debtToEquity
-          : undefined
       return {
         symbol: typeof item.symbol === 'string' ? item.symbol : '',
         regularMarketPrice: toNumber(item.regularMarketPrice),
         priceEarnings: toNumber(item.priceEarnings),
-        priceBookValue: toNumber(stats.priceToBook),
-        dividendYield: toNumber(stats.dividendYield),
-        roe:
-          toNumber(financial.returnOnEquity) !== undefined
-            ? toNumber(financial.returnOnEquity)! * 100
-            : undefined,
-        grossDebt: debt,
-        equity,
-        earningsPerShare:
-          toNumber(item.earningsPerShare) ?? toNumber(stats.trailingEps),
-        bookValuePerShare: toNumber(stats.bookValue),
-        profitGrowth5y:
-          toNumber(stats.earningsAnnualGrowth) !== undefined
-            ? toNumber(stats.earningsAnnualGrowth)! * 100
-            : undefined,
-        ebitda: toNumber(financial.ebitda),
+        earningsPerShare: toNumber(item.earningsPerShare),
         marketCap: toNumber(item.marketCap),
       }
     })

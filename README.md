@@ -24,7 +24,7 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 Set `NEXT_PUBLIC_BRAPI_TOKEN` with your [Brapi](https://brapi.dev) API token to enable data retrieval.
 Example token: `5ejnja1S2EVrB6NxWvfoEW`.
-The free plan allows one asset per request, up to 15.000 requests per month, three months of historical quotes and data updates every 30 minutes.
+The free plan allows one asset per request, up to 15.000 requests per month, three months of historical quotes and data updates every 30 minutes. Only default fields are exposed; modules like `financialData` require a paid plan.
 
 ## Learn More
 
